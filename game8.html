@@ -1,0 +1,1384 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Who Wants to Be a Millionaire - Embedded System Cyber Edition</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Outfit:wght@300;400;600;800&family=Roboto+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Outfit', 'sans-serif'],
+                        orbitron: ['Orbitron', 'sans-serif'],
+                        mono: ['Roboto Mono', 'monospace'],
+                    },
+                    colors: {
+                        cyber: {
+                            blue: '#00f0ff',
+                            gold: '#ffb703',
+                            purple: '#7000ff',
+                            dark: '#030611',
+                            card: '#0c152e',
+                            cardGlow: 'rgba(0, 240, 255, 0.15)'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #030611;
+            color: #ffffff;
+            overflow-x: hidden;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        /* --- VIDEO BACKGROUND & OVERLAY --- */
+        #bg-video-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 0;
+            overflow: hidden;
+            pointer-events: none;
+        }
+
+        #bg-video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            filter: brightness(0.4) contrast(1.2) hue-rotate(180deg);
+        }
+
+        .video-overlay {
+            position: absolute;
+            inset: 0;
+            background: 
+                radial-gradient(circle at center, rgba(3, 6, 17, 0.4) 0%, rgba(3, 6, 17, 0.85) 100%),
+                linear-gradient(rgba(0, 240, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 240, 255, 0.03) 1px, transparent 1px);
+            background-size: 100% 100%, 30px 30px, 30px 30px;
+        }
+
+        .cyber-card {
+            background: linear-gradient(135deg, rgba(12, 21, 46, 0.88) 0%, rgba(5, 9, 20, 0.93) 100%);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(0, 240, 255, 0.3);
+            box-shadow: 0 0 25px rgba(0, 240, 255, 0.15), inset 0 0 20px rgba(0, 240, 255, 0.05);
+        }
+
+        .hud-box {
+            position: relative;
+        }
+        .hud-box::before {
+            content: '';
+            position: absolute;
+            top: -2px; left: -2px; width: 12px; height: 12px;
+            border-top: 2px solid #00f0ff;
+            border-left: 2px solid #00f0ff;
+        }
+        .hud-box::after {
+            content: '';
+            position: absolute;
+            bottom: -2px; right: -2px; width: 12px; height: 12px;
+            border-bottom: 2px solid #00f0ff;
+            border-right: 2px solid #00f0ff;
+        }
+
+        .millionaire-poly {
+            clip-path: polygon(16px 0%, calc(100% - 16px) 0%, 100% 50%, calc(100% - 16px) 100%, 16px 100%, 0% 50%);
+        }
+
+        .option-btn {
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+        }
+
+        /* --- CUSTOM COLORFUL BACKGROUNDS FOR EACH OPTION --- */
+        /* Opsi A: Deep Electric Blue to Cyan */
+        #opt-0 {
+            background: linear-gradient(135deg, rgba(10, 25, 47, 0.95) 0%, rgba(13, 71, 161, 0.85) 50%, rgba(10, 25, 47, 0.95) 100%);
+            border: 2px solid #1e88e5;
+            box-shadow: 0 4px 15px rgba(13, 71, 161, 0.3);
+        }
+        #opt-0:hover:not(:disabled) {
+            background: linear-gradient(135deg, rgba(13, 71, 161, 0.95) 0%, rgba(0, 180, 216, 0.9) 50%, rgba(13, 71, 161, 0.95) 100%);
+            border-color: #00f0ff;
+            box-shadow: 0 0 25px rgba(0, 240, 255, 0.6);
+            transform: translateY(-2px);
+        }
+
+        /* Opsi B: Cyber Purple to Neon Magenta */
+        #opt-1 {
+            background: linear-gradient(135deg, rgba(30, 11, 46, 0.95) 0%, rgba(88, 28, 135, 0.85) 50%, rgba(30, 11, 46, 0.95) 100%);
+            border: 2px solid #a855f7;
+            box-shadow: 0 4px 15px rgba(88, 28, 135, 0.3);
+        }
+        #opt-1:hover:not(:disabled) {
+            background: linear-gradient(135deg, rgba(88, 28, 135, 0.95) 0%, rgba(192, 38, 211, 0.9) 50%, rgba(88, 28, 135, 0.95) 100%);
+            border-color: #f0abfc;
+            box-shadow: 0 0 25px rgba(192, 38, 211, 0.6);
+            transform: translateY(-2px);
+        }
+
+        /* Opsi C: Dark Emerald to Bright Teal */
+        #opt-2 {
+            background: linear-gradient(135deg, rgba(6, 30, 26, 0.95) 0%, rgba(6, 95, 70, 0.85) 50%, rgba(6, 30, 26, 0.95) 100%);
+            border: 2px solid #10b981;
+            box-shadow: 0 4px 15px rgba(6, 95, 70, 0.3);
+        }
+        #opt-2:hover:not(:disabled) {
+            background: linear-gradient(135deg, rgba(6, 95, 70, 0.95) 0%, rgba(20, 184, 166, 0.9) 50%, rgba(6, 95, 70, 0.95) 100%);
+            border-color: #2dd4bf;
+            box-shadow: 0 0 25px rgba(45, 212, 191, 0.6);
+            transform: translateY(-2px);
+        }
+
+        /* Opsi D: Warm Amber to Crimson Sunset */
+        #opt-3 {
+            background: linear-gradient(135deg, rgba(43, 18, 5, 0.95) 0%, rgba(146, 64, 14, 0.85) 50%, rgba(43, 18, 5, 0.95) 100%);
+            border: 2px solid #f59e0b;
+            box-shadow: 0 4px 15px rgba(146, 64, 14, 0.3);
+        }
+        #opt-3:hover:not(:disabled) {
+            background: linear-gradient(135deg, rgba(146, 64, 14, 0.95) 0%, rgba(217, 119, 6, 0.9) 50%, rgba(146, 64, 14, 0.95) 100%);
+            border-color: #fbbf24;
+            box-shadow: 0 0 25px rgba(251, 191, 36, 0.6);
+            transform: translateY(-2px);
+        }
+
+        /* --- STATE OVERRIDES (Dipilih, Benar, Salah) --- */
+        .option-btn.selected {
+            background: linear-gradient(90deg, #b45309 0%, #f59e0b 50%, #b45309 100%) !important;
+            border-color: #fef08a !important;
+            color: #ffffff !important;
+            box-shadow: 0 0 30px rgba(245, 158, 11, 0.9) !important;
+        }
+
+        .option-btn.correct {
+            background: linear-gradient(90deg, #047857 0%, #10b981 50%, #047857 100%) !important;
+            border-color: #6ee7b7 !important;
+            box-shadow: 0 0 35px rgba(16, 185, 129, 0.95) !important;
+            animation: pulse-glow 0.8s infinite alternate;
+        }
+
+        .option-btn.wrong {
+            background: linear-gradient(90deg, #b91c1c 0%, #ef4444 50%, #b91c1c 100%) !important;
+            border-color: #fca5a5 !important;
+            box-shadow: 0 0 30px rgba(239, 68, 68, 0.9) !important;
+            animation: shake 0.4s ease-in-out;
+        }
+
+        .ladder-item {
+            transition: all 0.25s ease;
+            clip-path: polygon(6px 0%, calc(100% - 6px) 0%, 100% 50%, calc(100% - 6px) 100%, 6px 100%, 0% 50%);
+        }
+
+        .ladder-item.active {
+            background: linear-gradient(90deg, #d97706 0%, #f59e0b 50%, #d97706 100%);
+            color: #000000;
+            font-weight: 900;
+            box-shadow: 0 0 15px rgba(245, 158, 11, 0.9);
+            transform: scale(1.02);
+        }
+
+        .ladder-item.passed {
+            color: #10b981;
+            opacity: 0.85;
+            background: rgba(6, 78, 59, 0.45);
+            border-color: rgba(16, 185, 129, 0.5);
+        }
+
+        .ladder-item.milestone {
+            color: #38bdf8;
+            border-color: rgba(56, 189, 248, 0.6);
+            background: rgba(14, 116, 144, 0.3);
+        }
+
+        @keyframes pulse-glow {
+            0% { transform: scale(1); filter: brightness(1); }
+            100% { transform: scale(1.02); filter: brightness(1.25); }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-8px); }
+            75% { transform: translateX(8px); }
+        }
+
+        .neon-text-gold {
+            text-shadow: 0 0 10px rgba(255, 183, 3, 0.8), 0 0 20px rgba(255, 183, 3, 0.4);
+        }
+    </style>
+</head>
+<body class="relative z-10 flex flex-col min-h-screen justify-between p-3 md:p-6 select-none">
+
+    <!-- VIDEO BACKGROUND CONTAINER -->
+    <div id="bg-video-container">
+        <video id="bg-video" autoplay loop muted playsinline>
+            <source src="https://assets.mixkit.co/videos/preview/mixkit-digital-animation-of-screens-41555-large.mp4" type="video/mp4">
+        </video>
+        <div class="video-overlay"></div>
+    </div>
+
+    <!-- MODAL INPUT NAMA PLAYER -->
+    <div id="player-name-modal" class="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 z-50">
+        <div class="cyber-card max-w-md w-full p-6 md:p-8 rounded-2xl text-center border-2 border-cyan-400/80 shadow-2xl relative">
+            <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 mx-auto flex items-center justify-center mb-4 shadow-lg shadow-cyan-500/40">
+                <i class="fa-solid fa-user-astronaut text-3xl text-yellow-300 animate-bounce"></i>
+            </div>
+            
+            <h2 class="font-orbitron font-black text-2xl text-cyan-300 mb-1 tracking-wider">AL MUSLIM FOUNDATION</h2>
+            <p class="text-slate-400 text-xs mb-6">Masukkan nama Anda untuk mengidentifikasi Agen Embedded System!</p>
+
+            <form onSubmit="startGameWithPlayer(event)" class="space-y-4">
+                <div class="relative">
+                    <input type="text" id="input-player-name" maxlength="18" placeholder="Nama / Codename Anda..." required
+                        class="w-full bg-slate-950/90 border border-cyan-500/50 rounded-xl px-4 py-3 text-center text-cyan-200 font-orbitron text-sm focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 transition placeholder:text-slate-600">
+                </div>
+                
+                <button type="submit" class="w-full py-3.5 bg-gradient-to-r from-cyan-500 via-blue-600 to-purple-600 hover:from-cyan-400 hover:to-purple-500 text-white font-orbitron font-bold rounded-xl shadow-lg shadow-cyan-500/30 transition transform active:scale-95 text-sm tracking-wider flex items-center justify-center gap-2">
+                    <span>MEMULAI PERMAINAN</span>
+                    <i class="fa-solid fa-play text-yellow-300"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- HEADER BAR -->
+    <header class="w-full max-w-7xl mx-auto flex flex-wrap justify-between items-center cyber-card p-3.5 md:p-5 rounded-2xl mb-4 relative z-20 border-b-2 border-cyan-500/50">
+        <!-- Logo & Title -->
+<div class="flex items-center space-x-3.5">
+    <!-- LOGO GAMBAR BARU -->
+    <div class="relative flex items-center justify-center w-11 h-11 md:w-12 md:h-12 rounded-xl bg-slate-900/80 p-1 border border-cyan-500/40 shadow-lg shadow-cyan-500/30 overflow-hidden">
+    <img src="./log11.png" alt="Logo" class="w-full h-full object-contain">
+</div>
+    <div>
+        <h1 class="font-orbitron font-black text-lg md:text-2xl tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-amber-200 to-cyan-400 neon-text-gold">
+                    KUIS BERJENJANG
+                </h1>
+                <p class="text-xs text-cyan-300 font-medium flex items-center gap-1.5">
+                    <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                    Materi: Embedded System (Sistem Tertanam)
+                </p>
+            </div>
+        </div>
+
+        <!-- Center Status / Player Name & Streak -->
+        <div class="hidden md:flex items-center space-x-5 bg-slate-950/80 px-5 py-2.5 rounded-xl border border-cyan-500/30">
+            <div class="text-center">
+                <div class="text-[10px] text-slate-400 font-mono tracking-widest">PLAYER</div>
+                <div id="display-player-name" class="text-sm font-bold font-orbitron text-cyan-400">Guest</div>
+            </div>
+            <div class="h-7 w-[1px] bg-cyan-500/30"></div>
+            <div class="text-center">
+                <div class="text-[10px] text-slate-400 font-mono tracking-widest">STREAK</div>
+                <div id="streak-count" class="text-base font-bold font-orbitron text-amber-400">⚡ 0x</div>
+            </div>
+            <div class="h-7 w-[1px] bg-cyan-500/30"></div>
+            <div class="text-center">
+                <div class="text-[10px] text-slate-400 font-mono tracking-widest">AKURASI</div>
+                <div id="accuracy-rate" class="text-base font-bold font-orbitron text-emerald-400">100%</div>
+            </div>
+            <div class="h-7 w-[1px] bg-cyan-500/30"></div>
+            <div class="text-center">
+                <div class="text-[10px] text-slate-400 font-mono tracking-widest">STATUS KULTUR</div>
+                <div id="rank-title" class="text-xs font-bold text-cyan-300">Pemula Embedded</div>
+            </div>
+        </div>
+
+        <!-- Controls & Sound -->
+        <div class="flex items-center space-x-2.5 mt-2 sm:mt-0">
+            <button onClick="restartGameConfirm()" class="px-3 py-2 rounded-xl border border-slate-700 bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white font-mono text-xs flex items-center gap-1.5 transition">
+                <i class="fa-solid fa-arrows-rotate text-yellow-400"></i>
+                <span class="hidden sm:inline">Reset</span>
+            </button>
+            
+            <button id="btn-sound" onClick="toggleSound()" class="w-10 h-10 rounded-xl border border-cyan-500/40 bg-slate-900/80 hover:bg-cyan-950 text-cyan-400 flex items-center justify-center transition shadow-lg">
+                <i id="sound-icon" class="fa-solid fa-volume-high text-base"></i>
+            </button>
+        </div>
+    </header>
+
+    <main class="w-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-5 flex-1 items-stretch mb-4 relative z-20">
+        
+        <!-- LEFT COLUMN: QUESTION & OPTIONS -->
+        <section class="lg:col-span-8 flex flex-col justify-between cyber-card p-4 md:p-6 rounded-2xl relative overflow-hidden min-h-[540px]">
+            
+            <!-- Top HUD Bar inside Card -->
+            <div class="flex justify-between items-center border-b border-cyan-500/20 pb-3 mb-3">
+                <div class="text-xs md:text-sm font-semibold text-cyan-300 flex items-center gap-2">
+                    <span class="text-slate-400 font-mono">SOAL NO:</span> 
+                    <span id="question-number" class="text-yellow-400 font-black text-xl font-orbitron">1</span> 
+                    <span class="text-slate-500 font-mono">/ 30</span>
+                </div>
+
+                <!-- Timer Bar & Clock -->
+                <div class="flex items-center space-x-3 bg-slate-950/90 px-3.5 py-1.5 rounded-lg border border-cyan-500/40 shadow-inner">
+                    <i class="fa-solid fa-stopwatch text-amber-400 animate-spin" style="animation-duration: 8s;"></i>
+                    <span id="timer-text" class="font-orbitron font-bold text-sm text-cyan-300 min-w-[32px]">30s</span>
+                    <div class="w-24 md:w-32 bg-slate-800 h-2.5 rounded-full overflow-hidden border border-slate-700">
+                        <div id="timer-bar" class="bg-gradient-to-r from-emerald-400 via-cyan-400 to-amber-400 h-full w-full transition-all duration-1000"></div>
+                    </div>
+                </div>
+
+                <div class="text-xs md:text-sm font-semibold text-cyan-300">
+                    <span class="text-slate-400 font-mono">NILAI TANGGA:</span> 
+                    <span id="current-prize" class="text-emerald-400 font-black text-base md:text-lg font-orbitron">3 Poin</span>
+                </div>
+            </div>
+
+            <!-- Topic Tag & Level Badge -->
+            <div class="flex justify-between items-center my-1 px-1">
+                <div class="px-3 py-1 rounded-full bg-cyan-950/70 border border-cyan-500/30 text-[11px] text-cyan-300 flex items-center gap-2 font-mono">
+                    <i class="fa-solid fa-atom text-yellow-400"></i>
+                    <span id="topic-badge">SISTEM TERTRANAM - DASAR & ARSITEKTUR</span>
+                </div>
+                <div class="text-xs font-mono text-amber-400 font-semibold" id="safe-haven-indicator">
+                    <i class="fa-solid fa-shield-halved mr-1"></i>TITIK AMAN: <span class="text-white">SOAL 10, 20</span>
+                </div>
+            </div>
+
+            <!-- Question Text Box -->
+            <div class="my-auto py-4">
+                <div class="hud-box bg-slate-950/90 border border-cyan-500/40 p-5 md:p-8 text-center flex items-center justify-center min-h-[150px] rounded-xl shadow-2xl">
+                    <h2 id="question-text" class="text-base md:text-xl font-bold leading-relaxed tracking-wide text-slate-100">
+                        Memuat Pertanyaan...
+                    </h2>
+                </div>
+            </div>
+
+            <!-- Options Grid (2x2) -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5 md:gap-4 mt-2">
+                <button onClick="selectOption(0)" id="opt-0" class="option-btn millionaire-poly py-4 px-6 text-left flex items-center space-x-3 text-sm md:text-base font-semibold group">
+                    <span class="text-cyan-300 font-bold font-orbitron text-base min-w-[28px] group-hover:text-cyan-200">A:</span>
+                    <span id="opt-text-0" class="text-slate-100 group-hover:text-white leading-snug">Pilihan A</span>
+                </button>
+
+                <button onClick="selectOption(1)" id="opt-1" class="option-btn millionaire-poly py-4 px-6 text-left flex items-center space-x-3 text-sm md:text-base font-semibold group">
+                    <span class="text-purple-300 font-bold font-orbitron text-base min-w-[28px] group-hover:text-purple-200">B:</span>
+                    <span id="opt-text-1" class="text-slate-100 group-hover:text-white leading-snug">Pilihan B</span>
+                </button>
+
+                <button onClick="selectOption(2)" id="opt-2" class="option-btn millionaire-poly py-4 px-6 text-left flex items-center space-x-3 text-sm md:text-base font-semibold group">
+                    <span class="text-emerald-300 font-bold font-orbitron text-base min-w-[28px] group-hover:text-emerald-200">C:</span>
+                    <span id="opt-text-2" class="text-slate-100 group-hover:text-white leading-snug">Pilihan C</span>
+                </button>
+
+                <button onClick="selectOption(3)" id="opt-3" class="option-btn millionaire-poly py-4 px-6 text-left flex items-center space-x-3 text-sm md:text-base font-semibold group">
+                    <span class="text-amber-300 font-bold font-orbitron text-base min-w-[28px] group-hover:text-amber-200">D:</span>
+                    <span id="opt-text-3" class="text-slate-100 group-hover:text-white leading-snug">Pilihan D</span>
+                </button>
+            </div>
+
+            <!-- Status Message Banner -->
+            <div id="status-message" class="mt-4 text-center min-h-[26px] text-xs md:text-sm font-semibold text-amber-300 font-mono bg-slate-950/60 py-1.5 px-3 rounded-lg border border-amber-500/20">
+                Pilihlah jawaban yang paling tepat sebelum waktu habis!
+            </div>
+        </section>
+
+        <!-- RIGHT COLUMN: LIFELINES & SCORE LADDER (3 KOLOM) -->
+        <section class="lg:col-span-4 flex flex-col justify-between gap-4">
+            
+            <!-- Lifeline Control Panel -->
+            <div class="cyber-card p-4 rounded-2xl">
+                <h3 class="text-center font-orbitron font-bold text-xs tracking-widest text-cyan-300 border-b border-cyan-500/30 pb-2 mb-3 flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-wand-magic-sparkles text-yellow-400"></i>
+                    <span>BANTUAN CYBER (LIFELINES)</span>
+                </h3>
+
+                <div class="grid grid-cols-3 gap-2.5">
+                    <button id="btn-5050" onClick="useLifeline5050()" title="Eliminasi 2 Jawaban Salah" class="py-2.5 px-2 rounded-xl border border-amber-400/60 bg-slate-900/90 hover:bg-amber-400 hover:text-black font-orbitron font-bold text-xs flex flex-col items-center justify-center gap-1 transition shadow-lg group disabled:opacity-30 disabled:cursor-not-allowed">
+                        <span class="text-base">50:50</span>
+                        <span class="text-[9px] font-sans font-normal text-amber-200 group-hover:text-black">Eliminasi 2</span>
+                    </button>
+
+                    <button id="btn-audience" onClick="useLifelineAudience()" title="Tanya Penonton" class="py-2.5 px-2 rounded-xl border border-cyan-400/60 bg-slate-900/90 hover:bg-cyan-400 hover:text-black font-bold text-xs flex flex-col items-center justify-center gap-1 transition shadow-lg group disabled:opacity-30 disabled:cursor-not-allowed">
+                        <i class="fa-solid fa-users text-base text-cyan-400 group-hover:text-black"></i>
+                        <span class="text-[9px] font-sans font-normal text-cyan-200 group-hover:text-black">Polling Pakar</span>
+                    </button>
+
+                    <button id="btn-skip" onClick="useLifelineSkip()" title="Tukar Pertanyaan Ini" class="py-2.5 px-2 rounded-xl border border-purple-400/60 bg-slate-900/90 hover:bg-purple-500 hover:text-white font-bold text-xs flex flex-col items-center justify-center gap-1 transition shadow-lg group disabled:opacity-30 disabled:cursor-not-allowed">
+                        <i class="fa-solid fa-forward-step text-base text-purple-400 group-hover:text-white"></i>
+                        <span class="text-[9px] font-sans font-normal text-purple-200 group-hover:text-white">Tukar Soal</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Score Ladder List Card (3 KOLOM) -->
+            <div class="cyber-card p-4 rounded-2xl flex-1 flex flex-col justify-between overflow-hidden">
+                <h3 class="text-center font-orbitron font-bold text-xs tracking-widest text-cyan-300 border-b border-cyan-500/30 pb-2 mb-2 flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-trophy text-yellow-400"></i>
+                    <span>TANGGA SKOR (3 LEVEL)</span>
+                </h3>
+
+                <!-- GRID 3 KOLOM LEVEL -->
+                <div class="grid grid-cols-3 gap-2 flex-1 items-start my-auto">
+                    <!-- KOLOM LEVEL 1 (Soal 1-10) -->
+                    <div class="flex flex-col-reverse gap-1 border-r border-cyan-500/20 pr-1.5">
+                        <div class="text-[10px] font-orbitron font-bold text-cyan-400 text-center mb-1 border-b border-cyan-500/30 pb-0.5">
+                            LEVEL 1
+                        </div>
+                        <div id="col-level-1" class="flex flex-col-reverse gap-1"></div>
+                    </div>
+
+                    <!-- KOLOM LEVEL 2 (Soal 11-20) -->
+                    <div class="flex flex-col-reverse gap-1 border-r border-cyan-500/20 px-1">
+                        <div class="text-[10px] font-orbitron font-bold text-amber-400 text-center mb-1 border-b border-amber-500/30 pb-0.5">
+                            LEVEL 2
+                        </div>
+                        <div id="col-level-2" class="flex flex-col-reverse gap-1"></div>
+                    </div>
+
+                    <!-- KOLOM LEVEL 3 (Soal 21-30) -->
+                    <div class="flex flex-col-reverse gap-1 pl-1.5">
+                        <div class="text-[10px] font-orbitron font-bold text-emerald-400 text-center mb-1 border-b border-emerald-500/30 pb-0.5">
+                            LEVEL 3
+                        </div>
+                        <div id="col-level-3" class="flex flex-col-reverse gap-1"></div>
+                    </div>
+                </div>
+
+                <div class="mt-2 pt-2 border-t border-cyan-500/20 text-[10px] font-mono text-center text-slate-400 flex justify-between">
+                    <span>Aman 1: <b class="text-cyan-300">Soal 10</b></span>
+                    <span>Aman 2: <b class="text-amber-300">Soal 20</b></span>
+                    <span>Max: <b class="text-emerald-300">100 Pts</b></span>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- MODAL POPUP: EXPLANATION DRAWER -->
+    <div id="explanation-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md hidden items-center justify-center p-4 z-50">
+        <div class="cyber-card max-w-lg w-full p-6 rounded-2xl border-2 border-cyan-400/80 shadow-2xl relative">
+            <div class="flex items-center gap-3 mb-4 border-b border-cyan-500/30 pb-3">
+                <div class="w-10 h-10 rounded-lg bg-cyan-500/20 border border-cyan-400 flex items-center justify-center">
+                    <i class="fa-solid fa-graduation-cap text-cyan-300 text-xl"></i>
+                </div>
+                <div>
+                    <h3 class="font-orbitron font-bold text-lg text-cyan-300">PENJELASAN EDUKATIF</h3>
+                    <p class="text-xs text-slate-400">Konsep & Pembahasan Materi Embedded System</p>
+                </div>
+            </div>
+            <div id="explanation-text" class="text-sm text-slate-200 leading-relaxed bg-slate-950/80 p-4 rounded-xl border border-slate-800 mb-6 font-sans">
+                Penjelasan materi akan tampil di sini.
+            </div>
+            <button onClick="closeExplanationModal()" class="w-full py-3 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black font-orbitron font-bold rounded-xl shadow-lg transition transform active:scale-95 text-sm tracking-wider flex items-center justify-center gap-2">
+                <span>LANJUTKAN KE SOAL BERIKUTNYA</span>
+                <i class="fa-solid fa-arrow-right"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- MODAL POPUP: AUDIENCE POLL -->
+    <div id="audience-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md hidden items-center justify-center p-4 z-50">
+        <div class="cyber-card max-w-md w-full p-6 rounded-2xl border-2 border-amber-400/80 shadow-2xl text-center">
+            <h3 class="font-orbitron font-bold text-lg text-amber-300 mb-1">
+                <i class="fa-solid fa-chart-column mr-2"></i>HASIL VOTING PAKAR EMBEDDED
+            </h3>
+            <p class="text-xs text-slate-400 mb-5">Persentase pilihan dari 100 pakar Sistem Tertanam:</p>
+
+            <div class="space-y-3 mb-6 text-left font-mono">
+                <div>
+                    <div class="flex justify-between text-xs text-slate-300 mb-1">
+                        <span>Pilihan A</span> <span id="poll-percent-0">0%</span>
+                    </div>
+                    <div class="w-full bg-slate-950 h-3.5 rounded-full overflow-hidden border border-slate-800">
+                        <div id="poll-bar-0" class="bg-gradient-to-r from-cyan-500 to-blue-400 h-full w-0 transition-all duration-1000"></div>
+                    </div>
+                </div>
+                <div>
+                    <div class="flex justify-between text-xs text-slate-300 mb-1">
+                        <span>Pilihan B</span> <span id="poll-percent-1">0%</span>
+                    </div>
+                    <div class="w-full bg-slate-950 h-3.5 rounded-full overflow-hidden border border-slate-800">
+                        <div id="poll-bar-1" class="bg-gradient-to-r from-purple-500 to-pink-400 h-full w-0 transition-all duration-1000"></div>
+                    </div>
+                </div>
+                <div>
+                    <div class="flex justify-between text-xs text-slate-300 mb-1">
+                        <span>Pilihan C</span> <span id="poll-percent-2">0%</span>
+                    </div>
+                    <div class="w-full bg-slate-950 h-3.5 rounded-full overflow-hidden border border-slate-800">
+                        <div id="poll-bar-2" class="bg-gradient-to-r from-emerald-500 to-teal-400 h-full w-0 transition-all duration-1000"></div>
+                    </div>
+                </div>
+                <div>
+                    <div class="flex justify-between text-xs text-slate-300 mb-1">
+                        <span>Pilihan D</span> <span id="poll-percent-3">0%</span>
+                    </div>
+                    <div class="w-full bg-slate-950 h-3.5 rounded-full overflow-hidden border border-slate-800">
+                        <div id="poll-bar-3" class="bg-gradient-to-r from-amber-500 to-orange-400 h-full w-0 transition-all duration-1000"></div>
+                    </div>
+                </div>
+            </div>
+
+            <button onClick="closeAudienceModal()" class="w-full py-2.5 bg-amber-500 hover:bg-amber-400 text-black font-orbitron font-bold rounded-xl shadow-lg transition">
+                KEMBALI KE PERMAINAN
+            </button>
+        </div>
+    </div>
+
+    <!-- MODAL POPUP: GAME OVER / VICTORY -->
+    <div id="game-modal" class="fixed inset-0 bg-black/85 backdrop-blur-md hidden items-center justify-center p-4 z-50">
+        <div class="cyber-card max-w-md w-full p-6 md:p-8 rounded-2xl text-center border-2 border-red-500/80 shadow-2xl">
+            <div id="modal-icon-bg" class="w-20 h-20 rounded-full bg-red-900/50 border-2 border-red-500 mx-auto flex items-center justify-center mb-4 shadow-lg">
+                <i id="modal-icon" class="fa-solid fa-rotate-left text-3xl text-red-400"></i>
+            </div>
+            
+            <h2 id="modal-title" class="font-orbitron font-black text-2xl text-red-400 mb-2 tracking-wider">JAWABAN SALAH!</h2>
+            <p id="modal-desc" class="text-slate-300 text-sm mb-5 leading-relaxed">
+                Sayang sekali! Jawaban Anda tidak tepat. Sesuai aturan game, Anda harus mengulang lagi dari <strong class="text-yellow-400">Soal Nomor 1</strong>.
+            </p>
+
+            <div class="bg-slate-950/90 p-4 rounded-xl border border-slate-800 mb-6 font-mono text-xs text-left space-y-2">
+                <div class="flex justify-between text-slate-400">
+                    <span>Agen / Player:</span> 
+                    <span id="modal-player-name" class="text-cyan-400 font-bold">Player</span>
+                </div>
+                <div class="flex justify-between text-slate-400">
+                    <span>Progress Terakhir:</span> 
+                    <span id="modal-level" class="text-yellow-400 font-bold">Soal 0</span>
+                </div>
+                <div class="flex justify-between text-slate-400">
+                    <span>Skor Akhir Diraih:</span> 
+                    <span id="modal-prize" class="text-emerald-400 font-bold">0 Poin</span>
+                </div>
+                <div class="flex justify-between text-slate-400">
+                    <span>Gelar Pencapaian:</span> 
+                    <span id="modal-rank" class="text-cyan-300 font-bold">Pemula</span>
+                </div>
+            </div>
+
+            <button onClick="restartGame()" class="w-full py-3.5 px-6 bg-gradient-to-r from-yellow-400 via-amber-500 to-yellow-600 hover:from-yellow-300 hover:to-amber-500 text-black font-orbitron font-extrabold rounded-xl shadow-xl transition transform active:scale-95 text-sm tracking-wider flex items-center justify-center space-x-2">
+                <i class="fa-solid fa-play"></i>
+                <span id="modal-btn-text">Coba Lagi Dari Soal 1</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- FOOTER -->
+    <footer class="text-center text-xs text-slate-500 my-2 font-mono relative z-20">
+        Game Pembelajaran Embedded System &copy; 2026 - Cyber Millionaire Interactive Edition
+    </footer>
+
+    <script>
+        // --- DATA BANK SOAL EMBEDDED SYSTEM (30 SOAL TOTAL) ---
+        const questions = [
+            {
+                q: "Apa definisi yang tepat dari Embedded System (Sistem Tertanam)?",
+                options: [
+                    "Komputer PC yang digunakan khusus untuk bermain game",
+                    "Sistem komputer kombinasi hardware & software untuk fungsi khusus tertentu",
+                    "Aplikasi software tanpa menggunakan komponen perangkat keras",
+                    "Sistem operasi windows yang terinstall pada laptop"
+                ],
+                answer: 1,
+                exp: "Embedded system adalah kombinasi perangkat keras (hardware) dan perangkat lunak (software) yang dirancang khusus untuk menjalankan tugas spesifik tertentu, berbeda dengan PC umum yang bersifat serbaguna."
+            },
+            {
+                q: "Perangkat keras berikut yang menjadi 'otak' pemproses utama dari sebagian besar embedded system adalah...",
+                options: [
+                    "Microcontroller / Microprocessor",
+                    "Harddisk eksternal 2TB",
+                    "Power Supply Unit 500W",
+                    "Kabel HDMI High Speed"
+                ],
+                answer: 0,
+                exp: "Mikrokontroler atau Mikroprosesor bertindak sebagai unit pemproses sentral (CPU) yang mengeksekusi instruksi program dalam embedded system."
+            },
+            {
+                q: "Salah satu karakteristik utama Embedded System dibanding komputer desktop biasa adalah...",
+                options: [
+                    "Ukurannya selalu raksasa dan membutuhkan ruangan khusus",
+                    "Dirancang spesifik untuk satu tugas khusus (Single-Function)",
+                    "Dapat diganti VGA Card-nya setiap saat",
+                    "Membutuhkan daya listrik ribuan Watt"
+                ],
+                answer: 1,
+                exp: "Embedded system bersifat dedicated/single-function, artinya dirancang untuk mengani satu fungsi spesifik secara efisien dan andal."
+            },
+            {
+                q: "Komponen yang bertindak untuk mengubah sinyal fisik dari lingkungan menjadi sinyal listrik dinamakan...",
+                options: [
+                    "Actuator",
+                    "Sensor",
+                    "Resistor",
+                    "Inverter"
+                ],
+                answer: 1,
+                exp: "Sensor mendeteksi parameter fisik lingkungan (seperti suhu, cahaya, tekanan) dan mengubahnya menjadi sinyal listrik yang dibaca sistem."
+            },
+            {
+                q: "Sebaliknya, komponen yang menerima sinyal kontrol untuk melakukan aksi fisik (seperti memutar motor) adalah...",
+                options: [
+                    "Actuator",
+                    "Sensor",
+                    "Transducer Input",
+                    "Oscillator"
+                ],
+                answer: 0,
+                exp: "Aktuator (seperti motor, solenoid, relay) mengubah sinyal elektrik kontrol menjadi gerakan atau aksi mekanis/fisik."
+            },
+            {
+                q: "Sistem operasi yang dirancang untuk memproses data tanpa penundaan (delay) secara presisi dinamakan...",
+                options: [
+                    "Windows 11 Pro",
+                    "RTOS (Real-Time Operating System)",
+                    "Android TV Edition",
+                    "macOS Sonoma"
+                ],
+                answer: 1,
+                exp: "RTOS (Real-Time Operating System) menjamin pemrosesan data dan respon dalam batasan waktu yang ketat (deterministik)."
+            },
+            {
+                q: "Antarmuka komunikasi serial synchronous dua arah menggunakan jalur SCL dan SDA adalah...",
+                options: [
+                    "I2C (Inter-Integrated Circuit)",
+                    "UART / RS232",
+                    "SPI",
+                    "Ethernet LAN"
+                ],
+                answer: 0,
+                exp: "I2C menggunakan dua jalur komunikasi serial, yaitu SCL (Serial Clock) dan SDA (Serial Data)."
+            },
+            {
+                q: "Protokol komunikasi serial yang menggunakan transmisi asynchronous dengan TX dan RX adalah...",
+                options: [
+                    "UART (Universal Asynchronous Receiver-Transmitter)",
+                    "I2C",
+                    "SPI",
+                    "CAN Bus"
+                ],
+                answer: 0,
+                exp: "UART menggunakan jalur Transmitter (TX) dan Receiver (RX) secara asinkron tanpa jalur clock dedicated."
+            },
+            {
+                q: "Sinyal analog dikonversi menjadi data digital agar bisa diproses oleh mikrokontroler menggunakan unit...",
+                options: [
+                    "DAC (Digital-to-Analog Converter)",
+                    "ADC (Analog-to-Digital Converter)",
+                    "PWM (Pulse Width Modulation)",
+                    "GPIO"
+                ],
+                answer: 1,
+                exp: "ADC (Analog-to-Digital Converter) mengubah variabel analog (seperti tegangan dari sensor) menjadi angka digital."
+            },
+            {
+                q: "Teknik menghasilkan sinyal seolah-olah analog dari pin digital dengan mengatur duty cycle disebut...",
+                options: [
+                    "PWM (Pulse Width Modulation)",
+                    "SPI Communication",
+                    "EEPROM Flash",
+                    "Interrupt Handling"
+                ],
+                answer: 0,
+                exp: "PWM (Pulse Width Modulation) memodulasi lebar pulsa sinyal digital untuk mensimulasikan output tegangan analog."
+            },
+            {
+                q: "Perbedaan utama Mikrokontroler (MCU) dibanding Mikroprosesor (MPU) adalah...",
+                options: [
+                    "MCU tidak memiliki memori internal sama sekali",
+                    "MCU mengintegrasikan CPU, RAM, ROM, dan I/O dalam satu chip tunggal (SoC)",
+                    "MPU selalu berukuran lebih kecil dari MCU",
+                    "MCU hanya bisa diprogram menggunakan bahasa Assembly"
+                ],
+                answer: 1,
+                exp: "Mikrokontroler adalah chip tunggal yang memuat CPU, memori (RAM/Flash), dan periferal I/O secara terintegrasi."
+            },
+            {
+                q: "Memori non-volatile pada sistem tertanam yang digunakan untuk menyimpan program utama yang tidak hilang saat mati listrik adalah...",
+                options: [
+                    "SRAM",
+                    "Flash Memory / ROM",
+                    "DRAM",
+                    "Cache L1"
+                ],
+                answer: 1,
+                exp: "Flash Memory/ROM bersifat non-volatile, menjaga kode program tetap tersimpan meskipun catu daya dipadamkan."
+            },
+            {
+                q: "Mekanisme penghentian sementara eksekusi utama CPU ketika terjadi event mendesak dari periferal disebut...",
+                options: [
+                    "Polling Loop",
+                    "Interrupt (Interupsi)",
+                    "Overclocking",
+                    "Deadlock"
+                ],
+                answer: 1,
+                exp: "Interrupt memungkinkan periferal meminta perhatian CPU secara langsung tanpa perlu proses polling berulang."
+            },
+            {
+                q: "Penyebab utama timbulnya kerentanan buffer overflow pada firmware embedded yang ditulis dengan C/C++ adalah...",
+                options: [
+                    "Kurangnya validasi panjang input data sebelum ditulis ke memori buffer",
+                    "Penggunaan koneksi jaringan nirkabel",
+                    "Tegangan listrik mikrokontroler tidak stabil",
+                    "Kecepatan clock CPU yang terlalu rendah"
+                ],
+                answer: 0,
+                exp: "Buffer overflow terjadi saat data melebihi kapasitas alokasi buffer memori akibat kurangnya pengecekan batas (bounds checking)."
+            },
+            {
+                q: "Timer keras (hardware timer) khusus yang bertugas me-reset mikrokontroler jika sistem hang/freeze dinamakan...",
+                options: [
+                    "Watchdog Timer (WDT)",
+                    "Real-Time Clock (RTC)",
+                    "Sleep Timer",
+                    "Prescaler Counter"
+                ],
+                answer: 0,
+                exp: "Watchdog Timer me-reset sistem secara otomatis jika program terjebak dalam infinite loop atau tidak merespon (freeze)."
+            },
+            {
+                q: "Protokol komunikasi bus standar industri otomotif yang sangat andal terhadap interferensi noise adalah...",
+                options: [
+                    "CAN (Controller Area Network) Bus",
+                    "USB 3.0",
+                    "SPI Bus",
+                    "I2C Bus"
+                ],
+                answer: 0,
+                exp: "CAN Bus banyak digunakan pada kendaraan modern untuk memungkinkan berbagai ECU berkomunikasi secara aman dan andal."
+            },
+            {
+                q: "Fitur hemat daya pada mikrokontroler yang menonaktifkan clock CPU saat tidak ada tugas aktif disebut...",
+                options: [
+                    "Overclock Mode",
+                    "Sleep / Low-Power Mode",
+                    "Turbo Boost",
+                    "Active Polling"
+                ],
+                answer: 1,
+                exp: "Sleep/Low-Power mode mematikan blok peripheral tertentu dan clock CPU untuk menghemat konsumsi energi baterai."
+            },
+            {
+                q: "Perangkat keras antarmuka standar yang biasa digunakan untuk debugging dan pemrograman chip chip mikrokontroler adalah...",
+                options: [
+                    "JTAG / SWD (Serial Wire Debug)",
+                    "HDMI Port",
+                    "VGA Connector",
+                    "SATA Port"
+                ],
+                answer: 0,
+                exp: "JTAG dan SWD adalah antarmuka standar industri untuk flashing firmware dan debugging tingkat hardware."
+            },
+            {
+                q: "Ancaman keamanan cyber berupa analisis pola konsumsi daya chip saat melakukan enkripsi disebut...",
+                options: [
+                    "Side-Channel Attack (SCA)",
+                    "Phishing Attack",
+                    "SQL Injection",
+                    "Man-in-the-Middle"
+                ],
+                answer: 0,
+                exp: "Side-Channel Attack mengandalkan informasi fisik seperti konsumsi daya, emisi elektromagnetik, atau waktu eksekusi."
+            },
+            {
+                q: "Modul keras khusus dalam SoC yang bertugas menyimpan kunci enkripsi secara sangat aman dari peretasan adalah...",
+                options: [
+                    "HSM (Hardware Security Module) / TPM",
+                    "ALU (Arithmetic Logic Unit)",
+                    "DMA Controller",
+                    "VGA Engine"
+                ],
+                answer: 0,
+                exp: "HSM atau TPM adalah komponen keras terisolasi yang mengelola materi kriptografi dan kunci enkripsi dengan aman."
+            },
+            {
+                q: "Proses verifikasi integritas firmware saat booting menggunakan kunci digital cryptographic dinamakan...",
+                options: [
+                    "Secure Boot",
+                    "Fast Boot",
+                    "Over-The-Air (OTA)",
+                    "Cold Boot"
+                ],
+                answer: 0,
+                exp: "Secure Boot memastikan hanya firmware yang memiliki tanda tangan digital (digital signature) sah yang dapat dieksekusi saat boot."
+            },
+            {
+                q: "Arsitektur instruksi komputer yang sederhana dan sangat umum digunakan pada mikrokontroler (misal ARM/RISC-V) adalah...",
+                options: [
+                    "CISC (Complex Instruction Set Computer)",
+                    "RISC (Reduced Instruction Set Computer)",
+                    "VLIW Architecture",
+                    "Quantum Processing"
+                ],
+                answer: 1,
+                exp: "RISC menggunakan set instruksi yang disederhanakan untuk mencapai efisiensi daya dan kecepatan eksekusi tinggi per cycle."
+            },
+            {
+                q: "Fitur yang memungkinkan periferal mentransfer data langsung ke memori RAM tanpa beban CPU disebut...",
+                options: [
+                    "DMA (Direct Memory Access)",
+                    "GPIO Interrupt",
+                    "Stack Pointer",
+                    "Register Bank"
+                ],
+                answer: 0,
+                exp: "DMA (Direct Memory Access) membebaskan CPU dari tugas memindahkan blok data antar periferal dan memori."
+            },
+            {
+                q: "Protokol IoT ringan berbasis publish/subscribe yang sangat populer untuk sistem tertanam adalah...",
+                options: [
+                    "MQTT (Message Queuing Telemetry Transport)",
+                    "HTTP/2",
+                    "FTP",
+                    "SMTP"
+                ],
+                answer: 0,
+                exp: "MQTT adalah protokol messaging berbobot ringan (lightweight) yang efisien untuk perangkat bersumber daya terbatas."
+            },
+            {
+                q: "Metode pembaruan firmware secara nirkabel pada perangkat IoT tertanam yang terpasang di lapangan disebut...",
+                options: [
+                    "OTA (Over-The-Air) Update",
+                    "Manual Flashing",
+                    "JTAG Programming",
+                    "USB Bootloading"
+                ],
+                answer: 0,
+                exp: "OTA (Over-The-Air) memungkinkan pembaharuan software/firmware secara jarak jauh melalui jaringan Wi-Fi/Cellular."
+            },
+            {
+                q: "Kondisi di mana dua thread/task berebut mengakses sumber daya bersama tanpa sinkronisasi yang tepat disebut...",
+                options: [
+                    "Race Condition",
+                    "Memory Leak",
+                    "Stack Overflow",
+                    "Cache Miss"
+                ],
+                answer: 0,
+                exp: "Race Condition terjadi ketika hasil eksekusi bergantung pada urutan atau timing eksekusi thread yang saling berebut."
+            },
+            {
+                q: "Mekanisme sinkronisasi dalam RTOS yang digunakan untuk mencegah kendala Race Condition adalah...",
+                options: [
+                    "Mutex (Mutual Exclusion) / Semaphore",
+                    "Watchdog Reset",
+                    "Prescaler Divider",
+                    "Bit-Shifting"
+                ],
+                answer: 0,
+                exp: "Mutex (Mutual Exclusion) memastikan hanya satu thread yang dapat mengakses area kritis (critical section) pada satu waktu."
+            },
+            {
+                q: "Masalah keamanan berupa injeksi kesalahan fisik (misal lonjakan tegangan/laser) untuk merusak eksekusi chip dinamakan...",
+                options: [
+                    "Fault Injection Attack",
+                    "Buffer Overflow",
+                    "DDoS Attack",
+                    "Cross-Site Scripting"
+                ],
+                answer: 0,
+                exp: "Fault Injection Attack sengaja mengganggu kondisi operasional chip untuk melewati mekanisme keamanan (seperti check-lock)."
+            },
+            {
+                q: "Sistem keamanan yang memisahkan area eksekusi normal dan area aman (secure world) pada prosesor ARM dikenal sebagai...",
+                options: [
+                    "ARM TrustZone",
+                    "Hyper-Threading",
+                    "VirtualBox",
+                    "Sandbox Engine"
+                ],
+                answer: 0,
+                exp: "ARM TrustZone menyediakan isolasi berbasis perangkat keras untuk memisahkan domain Secure World dan Non-Secure World."
+            },
+            {
+                q: "Standar keamanan cybersecurity internasional khusus untuk keselamatan fungsional sistem elektronik otomotif adalah...",
+                options: [
+                    "ISO 26262",
+                    "ISO 9001",
+                    "IEEE 802.11",
+                    "PCI-DSS"
+                ],
+                answer: 0,
+                exp: "ISO 26262 adalah standar Functional Safety internasional untuk sistem elektrikal dan elektronik pada kendaraan jalan raya."
+            }
+        ];
+
+        // --- GAME VARIABLES ---
+        let currentQuestionIdx = 0;
+        let selectedOption = null;
+        let isAnswerSubmitted = false;
+        let timerSeconds = 30;
+        let timerInterval = null;
+        let isSoundOn = true;
+        let playerName = "Player";
+        let streak = 0;
+        let correctAnswersCount = 0;
+
+        // Lifelines usage state
+        let used5050 = false;
+        let usedAudience = false;
+        let usedSkip = false;
+
+        // Score Prizes (30 levels)
+        const prizes = [
+            "1 Pts", "2 Pts", "3 Pts", "4 Pts", "5 Pts", 
+            "6 Pts", "7 Pts", "8 Pts", "9 Pts", "10 Pts (AMAN)",
+            "12 Pts", "15 Pts", "18 Pts", "22 Pts", "26 Pts", 
+            "30 Pts", "35 Pts", "40 Pts", "45 Pts", "50 Pts (AMAN)",
+            "55 Pts", "60 Pts", "67 Pts", "75 Pts", "82 Pts", 
+            "88 Pts", "92 Pts", "95 Pts", "98 Pts", "100 Pts (JUARA)"
+        ];
+
+        // --- AUDIO SYNTHESIZER (WEB AUDIO API) ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playSound(type) {
+            if (!isSoundOn) return;
+            try {
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                if (type === 'click') {
+                    osc.frequency.setValueAtTime(440, audioCtx.currentTime);
+                    gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.1);
+                } else if (type === 'correct') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(523.25, audioCtx.currentTime); // C5
+                    osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.1); // E5
+                    osc.frequency.setValueAtTime(783.99, audioCtx.currentTime + 0.2); // G5
+                    gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.5);
+                } else if (type === 'wrong') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(180, audioCtx.currentTime);
+                    osc.frequency.setValueAtTime(110, audioCtx.currentTime + 0.15);
+                    gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.4);
+                } else if (type === 'lifeline') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.3);
+                    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.3);
+                }
+            } catch (e) {
+                console.log("Audio play error:", e);
+            }
+        }
+
+        function toggleSound() {
+            isSoundOn = !isSoundOn;
+            const icon = document.getElementById('sound-icon');
+            if (isSoundOn) {
+                icon.className = "fa-solid fa-volume-high text-base";
+            } else {
+                icon.className = "fa-solid fa-volume-xmark text-base text-red-400";
+            }
+        }
+
+        // --- GAME START & INITIALIZATION ---
+        function startGameWithPlayer(e) {
+            e.preventDefault();
+            const inputVal = document.getElementById('input-player-name').value.trim();
+            if (inputVal) {
+                playerName = inputVal;
+            }
+            document.getElementById('display-player-name').innerText = playerName;
+            document.getElementById('player-name-modal').classList.add('hidden');
+            initLadder();
+            loadQuestion(0);
+        }
+
+        function initLadder() {
+            const col1 = document.getElementById('col-level-1');
+            const col2 = document.getElementById('col-level-2');
+            const col3 = document.getElementById('col-level-3');
+
+            col1.innerHTML = '';
+            col2.innerHTML = '';
+            col3.innerHTML = '';
+
+            for (let i = 0; i < 30; i++) {
+                const item = document.createElement('div');
+                item.id = `ladder-item-${i}`;
+                item.className = `ladder-item text-[10px] py-1 px-1.5 border rounded flex justify-between items-center ${
+                    (i === 9 || i === 19 || i === 29) ? 'milestone border-cyan-400 font-bold' : 'border-slate-800 text-slate-400 bg-slate-950/50'
+                }`;
+                item.innerHTML = `
+                    <span class="font-mono">#${i + 1}</span>
+                    <span class="font-orbitron font-semibold">${prizes[i]}</span>
+                `;
+
+                if (i < 10) {
+                    col1.appendChild(item);
+                } else if (i < 20) {
+                    col2.appendChild(item);
+                } else {
+                    col3.appendChild(item);
+                }
+            }
+        }
+
+        function updateLadderUI() {
+            for (let i = 0; i < 30; i++) {
+                const item = document.getElementById(`ladder-item-${i}`);
+                if (!item) continue;
+                item.classList.remove('active', 'passed');
+                
+                if (i < currentQuestionIdx) {
+                    item.classList.add('passed');
+                } else if (i === currentQuestionIdx) {
+                    item.classList.add('active');
+                }
+            }
+        }
+
+        function getTopicTitle(idx) {
+            if (idx < 10) return "LEVEL 1: DASAR & ARSITEKTUR EMBEDDED";
+            if (idx < 20) return "LEVEL 2: PERIFERAL, PROTOKOL & OS";
+            return "LEVEL 3: CYBERSECURITY, OTOMOTIF & ADVANCED";
+        }
+
+        function loadQuestion(index) {
+            currentQuestionIdx = index;
+            isAnswerSubmitted = false;
+            selectedOption = null;
+
+            updateLadderUI();
+
+            // Reset Option Buttons UI State
+            for (let i = 0; i < 4; i++) {
+                const btn = document.getElementById(`opt-${i}`);
+                btn.className = "option-btn millionaire-poly py-4 px-6 text-left flex items-center space-x-3 text-sm md:text-base font-semibold group";
+                btn.disabled = false;
+            }
+
+            const qData = questions[index];
+            document.getElementById('question-number').innerText = index + 1;
+            document.getElementById('current-prize').innerText = prizes[index];
+            document.getElementById('topic-badge').innerText = getTopicTitle(index);
+            document.getElementById('question-text').innerText = qData.q;
+
+            for (let i = 0; i < 4; i++) {
+                document.getElementById(`opt-text-${i}`).innerText = qData.options[i];
+            }
+
+            document.getElementById('status-message').innerText = "Pilihlah jawaban yang paling tepat sebelum waktu habis!";
+            document.getElementById('status-message').className = "mt-4 text-center min-h-[26px] text-xs md:text-sm font-semibold text-amber-300 font-mono bg-slate-950/60 py-1.5 px-3 rounded-lg border border-amber-500/20";
+
+            // Update stats
+            document.getElementById('streak-count').innerText = `⚡ ${streak}x`;
+            const acc = index === 0 ? 100 : Math.round((correctAnswersCount / index) * 100);
+            document.getElementById('accuracy-rate').innerText = `${acc}%`;
+
+            startTimer();
+        }
+
+        // --- TIMER CONTROL ---
+        function startTimer() {
+            clearInterval(timerInterval);
+            timerSeconds = 30;
+            updateTimerDisplay();
+
+            timerInterval = setInterval(() => {
+                timerSeconds--;
+                updateTimerDisplay();
+
+                if (timerSeconds <= 0) {
+                    clearInterval(timerInterval);
+                    handleTimeOut();
+                }
+            }, 1000);
+        }
+
+        function updateTimerDisplay() {
+            const timerText = document.getElementById('timer-text');
+            const timerBar = document.getElementById('timer-bar');
+            
+            timerText.innerText = `${timerSeconds}s`;
+            const pct = (timerSeconds / 30) * 100;
+            timerBar.style.width = `${pct}%`;
+
+            if (timerSeconds <= 5) {
+                timerText.className = "font-orbitron font-bold text-sm text-red-500 animate-pulse";
+                timerBar.className = "bg-gradient-to-r from-red-600 to-red-400 h-full w-full transition-all duration-1000";
+            } else if (timerSeconds <= 12) {
+                timerText.className = "font-orbitron font-bold text-sm text-amber-400";
+                timerBar.className = "bg-gradient-to-r from-amber-500 to-amber-300 h-full w-full transition-all duration-1000";
+            } else {
+                timerText.className = "font-orbitron font-bold text-sm text-cyan-300";
+                timerBar.className = "bg-gradient-to-r from-emerald-400 via-cyan-400 to-amber-400 h-full w-full transition-all duration-1000";
+            }
+        }
+
+        function handleTimeOut() {
+            if (isAnswerSubmitted) return;
+            isAnswerSubmitted = true;
+            playSound('wrong');
+
+            document.getElementById('status-message').innerText = "⏰ Waktu habis! Game Over.";
+            document.getElementById('status-message').className = "mt-4 text-center min-h-[26px] text-xs md:text-sm font-semibold text-red-400 font-mono bg-red-950/60 py-1.5 px-3 rounded-lg border border-red-500/30";
+
+            disableAllOptionButtons();
+
+            setTimeout(() => {
+                showGameOverModal("WAKTU HABIS!", "Anda kehabisan waktu untuk menjawab soal ini. Sesuai aturan, Anda harus mengulang lagi dari Soal 1.");
+            }, 1200);
+        }
+
+        function disableAllOptionButtons() {
+            for (let i = 0; i < 4; i++) {
+                document.getElementById(`opt-${i}`).disabled = true;
+            }
+        }
+
+        // --- OPTION SELECTION & EVALUATION ---
+        function selectOption(optionIndex) {
+            if (isAnswerSubmitted) return;
+            isAnswerSubmitted = true;
+            clearInterval(timerInterval);
+            selectedOption = optionIndex;
+            playSound('click');
+
+            const btn = document.getElementById(`opt-${optionIndex}`);
+            btn.classList.add('selected');
+
+            document.getElementById('status-message').innerText = "Mengunci jawaban... Memverifikasi data sistem...";
+
+            setTimeout(() => {
+                evaluateAnswer(optionIndex);
+            }, 1200);
+        }
+
+        function evaluateAnswer(chosenIndex) {
+            const qData = questions[currentQuestionIdx];
+            const correctIndex = qData.answer;
+            const chosenBtn = document.getElementById(`opt-${chosenIndex}`);
+            const correctBtn = document.getElementById(`opt-${correctIndex}`);
+
+            chosenBtn.classList.remove('selected');
+
+            if (chosenIndex === correctIndex) {
+                // JAWABAN BENAR
+                playSound('correct');
+                chosenBtn.classList.add('correct');
+                streak++;
+                correctAnswersCount++;
+
+                document.getElementById('status-message').innerText = "✅ JAWABAN TEPAT! Membuka penjelasan edukatif...";
+                document.getElementById('status-message').className = "mt-4 text-center min-h-[26px] text-xs md:text-sm font-semibold text-emerald-400 font-mono bg-emerald-950/60 py-1.5 px-3 rounded-lg border border-emerald-500/30";
+
+                disableAllOptionButtons();
+
+                setTimeout(() => {
+                    openExplanationModal(qData.exp);
+                }, 1500);
+
+            } else {
+                // JAWABAN SALAH
+                playSound('wrong');
+                chosenBtn.classList.add('wrong');
+                correctBtn.classList.add('correct');
+                streak = 0;
+
+                document.getElementById('status-message').innerText = "❌ JAWABAN SALAH!";
+                document.getElementById('status-message').className = "mt-4 text-center min-h-[26px] text-xs md:text-sm font-semibold text-red-400 font-mono bg-red-950/60 py-1.5 px-3 rounded-lg border border-red-500/30";
+
+                disableAllOptionButtons();
+
+                setTimeout(() => {
+                    showGameOverModal("JAWABAN SALAH!", "Sayang sekali! Jawaban Anda tidak tepat. Sesuai aturan game berjenjang, Anda harus mengulang dari Soal Nomor 1.");
+                }, 1800);
+            }
+        }
+
+        // --- EXPLANATION & PROGRESSION ---
+        function openExplanationModal(expText) {
+            document.getElementById('explanation-text').innerText = expText;
+            document.getElementById('explanation-modal').style.display = 'flex';
+        }
+
+        function closeExplanationModal() {
+            document.getElementById('explanation-modal').style.display = 'none';
+
+            if (currentQuestionIdx + 1 >= questions.length) {
+                // VICTORY!
+                triggerVictoryConfetti();
+                showVictoryModal();
+            } else {
+                loadQuestion(currentQuestionIdx + 1);
+            }
+        }
+
+        function triggerVictoryConfetti() {
+            confetti({
+                particleCount: 150,
+                spread: 80,
+                origin: { y: 0.6 }
+            });
+        }
+
+        function showVictoryModal() {
+            document.getElementById('modal-icon-bg').className = "w-20 h-20 rounded-full bg-emerald-900/50 border-2 border-emerald-400 mx-auto flex items-center justify-center mb-4 shadow-lg shadow-emerald-500/40";
+            document.getElementById('modal-icon').className = "fa-solid fa-trophy text-3xl text-yellow-300 animate-bounce";
+            document.getElementById('modal-title').innerText = "SELAMAT! JUARA EMBEDDED!";
+            document.getElementById('modal-title').className = "font-orbitron font-black text-2xl text-yellow-300 mb-2 tracking-wider";
+            document.getElementById('modal-desc').innerText = "Luar biasa! Anda berhasil menaklukkan seluruh 30 soal Sistem Tertanam dan meraih skor tertinggi 100 Pts!";
+            
+            document.getElementById('modal-player-name').innerText = playerName;
+            document.getElementById('modal-level').innerText = "Soal 30 / 30 (Selesai)";
+            document.getElementById('modal-prize').innerText = "100 Pts (MAX)";
+            document.getElementById('modal-rank').innerText = "Master Cyber Embedded";
+
+            document.getElementById('modal-btn-text').innerText = "Main Lagi dari Awal";
+            document.getElementById('game-modal').style.display = 'flex';
+        }
+
+        function showGameOverModal(title, desc) {
+            // Hitung Titik Aman yang Diraih
+            let safePrize = "0 Poin";
+            let safeRank = "Pemula Embedded";
+
+            if (currentQuestionIdx >= 20) {
+                safePrize = "50 Pts (Titik Aman 2)";
+                safeRank = "Pakar Embedded";
+            } else if (currentQuestionIdx >= 10) {
+                safePrize = "10 Pts (Titik Aman 1)";
+                safeRank = "Praktisi Embedded";
+            }
+
+            document.getElementById('modal-icon-bg').className = "w-20 h-20 rounded-full bg-red-900/50 border-2 border-red-500 mx-auto flex items-center justify-center mb-4 shadow-lg";
+            document.getElementById('modal-icon').className = "fa-solid fa-rotate-left text-3xl text-red-400";
+            document.getElementById('modal-title').innerText = title;
+            document.getElementById('modal-title').className = "font-orbitron font-black text-2xl text-red-400 mb-2 tracking-wider";
+            document.getElementById('modal-desc').innerText = desc;
+
+            document.getElementById('modal-player-name').innerText = playerName;
+            document.getElementById('modal-level').innerText = `Soal Nomor ${currentQuestionIdx + 1}`;
+            document.getElementById('modal-prize').innerText = safePrize;
+            document.getElementById('modal-rank').innerText = safeRank;
+
+            document.getElementById('modal-btn-text').innerText = "Coba Lagi Dari Soal 1";
+            document.getElementById('game-modal').style.display = 'flex';
+        }
+
+        function restartGame() {
+            document.getElementById('game-modal').style.display = 'none';
+            streak = 0;
+            correctAnswersCount = 0;
+            // Reset Lifelines
+            used5050 = false;
+            usedAudience = false;
+            usedSkip = false;
+
+            document.getElementById('btn-5050').disabled = false;
+            document.getElementById('btn-audience').disabled = false;
+            document.getElementById('btn-skip').disabled = false;
+
+            loadQuestion(0);
+        }
+
+        function restartGameConfirm() {
+            if (confirm("Apakah Anda yakin ingin mereset permainan dan mengulang dari Soal Nomor 1?")) {
+                restartGame();
+            }
+        }
+
+        // --- LIFELINES SYSTEM ---
+        function useLifeline5050() {
+            if (used5050 || isAnswerSubmitted) return;
+            used5050 = true;
+            playSound('lifeline');
+
+            document.getElementById('btn-5050').disabled = true;
+
+            const correctIdx = questions[currentQuestionIdx].answer;
+            let wrongIndices = [0, 1, 2, 3].filter(idx => idx !== correctIdx);
+
+            // Acak & eliminasi 2 yang salah
+            wrongIndices.sort(() => Math.random() - 0.5);
+            const toEliminate = wrongIndices.slice(0, 2);
+
+            toEliminate.forEach(idx => {
+                const btn = document.getElementById(`opt-${idx}`);
+                btn.disabled = true;
+                btn.style.opacity = "0.15";
+            });
+        }
+
+        function useLifelineAudience() {
+            if (usedAudience || isAnswerSubmitted) return;
+            usedAudience = true;
+            playSound('lifeline');
+
+            document.getElementById('btn-audience').disabled = true;
+
+            const correctIdx = questions[currentQuestionIdx].answer;
+            let percents = [0, 0, 0, 0];
+
+            // Alokasikan persentase tinggi untuk jawaban benar
+            const correctPercent = Math.floor(Math.random() * 25) + 55; // 55% - 80%
+            percents[correctIdx] = correctPercent;
+
+            let remaining = 100 - correctPercent;
+            const otherIndices = [0, 1, 2, 3].filter(i => i !== correctIdx);
+
+            for (let i = 0; i < otherIndices.length; i++) {
+                if (i === otherIndices.length - 1) {
+                    percents[otherIndices[i]] = remaining;
+                } else {
+                    const p = Math.floor(Math.random() * remaining);
+                    percents[otherIndices[i]] = p;
+                    remaining -= p;
+                }
+            }
+
+            for (let i = 0; i < 4; i++) {
+                document.getElementById(`poll-percent-${i}`).innerText = `${percents[i]}%`;
+                document.getElementById(`poll-bar-${i}`).style.width = `${percents[i]}%`;
+            }
+
+            document.getElementById('audience-modal').style.display = 'flex';
+        }
+
+        function closeAudienceModal() {
+            document.getElementById('audience-modal').style.display = 'none';
+        }
+
+        function useLifelineSkip() {
+            if (usedSkip || isAnswerSubmitted) return;
+            usedSkip = true;
+            playSound('lifeline');
+
+            document.getElementById('btn-skip').disabled = true;
+
+            // Muat ulang soal saat ini (seolah menukar dengan variasi)
+            loadQuestion(currentQuestionIdx);
+        }
+    </script>
+</body>
+</html>
